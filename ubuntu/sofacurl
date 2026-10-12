@@ -1,0 +1,24 @@
+#!/bin/bash
+url=""; out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o|--output) out="$2"; shift 2;;
+    -H|--header|-b|--cookie|-A|--user-agent|-e|--referer|-K|--config) shift 2;;
+    http*) url="$1"; shift;;
+    *) shift;;
+  esac
+done
+[ -n "$url" ] || { echo "sofacurl: no URL" >&2; exit 2; }
+
+tmp=$(mktemp)
+code=$(curl -s -o "$tmp" -w '%{http_code}' -G --data-urlencode "url=$url" http://127.0.0.1:8765/fetch)
+if [ "$code" = 200 ]; then
+  if [ -n "$out" ]; then mv "$tmp" "$out"; else cat "$tmp"; rm -f "$tmp"; fi
+  exit 0
+fi
+if [ "$code" = 000 ]; then
+  echo "sofacurl: fetch service not running (docker start sofafetch)" >&2
+else
+  echo "sofacurl: HTTP $code for $url: $(head -c 200 "$tmp")" >&2
+fi
+rm -f "$tmp"; exit 22
